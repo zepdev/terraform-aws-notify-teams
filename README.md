@@ -1,8 +1,8 @@
-# AWS Notify Slack Terraform module
+# AWS Notify Microsoft Teams Terraform module
 
-This module creates an SNS topic (or uses an existing one) and an AWS Lambda function that sends notifications to Slack using the [incoming webhooks API](https://api.slack.com/incoming-webhooks).
+This module creates an SNS topic (or uses an existing one) and an AWS Lambda function that sends notifications to Microsoft Teams using the [Incoming Webhook Connector](https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
 
-Start by setting up an [incoming webhook integration](https://my.slack.com/services/new/incoming-webhook/) in your Slack workspace.
+Start by setting up an [incoming webhook](https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook#add-an-incoming-webhook-to-a-teams-channel) in your Microsoft Teams channel.
 
 Doing serverless with Terraform? Check out [serverless.tf framework](https://serverless.tf), which aims to simplify all operations when working with the serverless in Terraform.
 
@@ -15,28 +15,25 @@ Terraform 0.11. Pin module version to `~> v1.0`.
 
 ## Features
 
-- [x] AWS Lambda runtime Python 3.8
+- [x] AWS Lambda runtime Python 3.6
 - [x] Create new SNS topic or use existing one
-- [x] Support plaintext and encrypted version of Slack webhook URL
-- [x] Most of Slack message options are customizable
+- [ ] Support plaintext and encrypted version of Teams webhook URL
+- [ ] Most of Teams message options are customizable
 - [x] Support different types of SNS messages:
   - [x] AWS CloudWatch Alarms
   - [x] AWS CloudWatch LogMetrics Alarms
-  - [ ] [Send pull-request to add support of other message types](https://github.com/terraform-aws-modules/terraform-aws-notify-slack/pulls)
-- [x] Local pytest driven testing of the lambda to a Slack sandbox channel
+  - [ ] [Send pull-request to add support of other message types](https://github.com/teamclairvoyant/terraform-aws-notify-teams/pulls)
+- [ ] Local pytest driven testing of the lambda to a Teams sandbox channel
 
 ## Usage
 
 ```hcl
-module "notify_slack" {
-  source  = "terraform-aws-modules/notify-slack/aws"
-  version = "~> 3.0"
+module "notify_teams" {
+  source  = "git::https://github.com/teamclairvoyant/terraform-aws-notify-teams.git?ref=teams012"
 
-  sns_topic_name = "slack-topic"
+  sns_topic_name = "teams-topic"
 
-  slack_webhook_url = "https://hooks.slack.com/services/AAA/BBB/CCC"
-  slack_channel     = "aws-notification"
-  slack_username    = "reporter"
+  teams_webhook_url = "https://outlook.office.com/webhook/AAA@BBB/IncomingWebhook/CCC/DDD"
 }
 ```
 
@@ -51,21 +48,21 @@ If you want to subscribe the AWS Lambda Function created by this module to an ex
 
 ## Examples
 
-* [notify-slack-simple](https://github.com/terraform-aws-modules/terraform-aws-notify-slack/tree/master/examples/notify-slack-simple) - Creates SNS topic which sends messages to Slack channel.
-* [cloudwatch-alerts-to-slack](https://github.com/terraform-aws-modules/terraform-aws-notify-slack/tree/master/examples/cloudwatch-alerts-to-slack) - End to end example which shows how to send AWS Cloudwatch alerts to Slack channel and use KMS to encrypt webhook URL.
+* [notify-teams-simple](https://github.com/teamclairvoyant/terraform-aws-notify-teams/tree/master/examples/notify-teams-simple) - Creates SNS topic which sends messages to Teams channel.
+* [cloudwatch-alerts-to-teams](https://github.com/teamclairvoyant/terraform-aws-notify-teams/tree/master/examples/cloudwatch-alerts-to-teams) - End to end example which shows how to send AWS Cloudwatch alerts to Teams channel and use KMS to encrypt webhook URL.
 
 ## Testing with pytest
 
 To run the tests:
 
-1. Set up a dedicated slack channel as a test sandbox with it's own webhook. See [Slack Incoming Webhooks docs](https://api.slack.com/messaging/webhooks) for details.
+1. Set up a dedicated Teams channel as a test sandbox with it's own webhook. See [add an incoming webhook to a Teams channel](https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook#add-an-incoming-webhook-to-a-teams-channel) for details.
 2. Make a copy of the sample pytest configuration and edit as needed.
 
         cp functions/pytest.ini.sample functions/pytest.ini
 
 3. Run the tests:
 
-        pytest functions/notify_slack_test.py
+        pytest functions/notify_teams_test.py
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
@@ -94,16 +91,13 @@ To run the tests:
 | iam\_role\_name\_prefix | A unique role name beginning with the specified prefix | `string` | `"lambda"` | no |
 | iam\_role\_policy\_name\_prefix | A unique policy name beginning with the specified prefix | `string` | `"lambda-policy-"` | no |
 | iam\_role\_tags | Additional tags for the IAM role | `map(string)` | `{}` | no |
-| kms\_key\_arn | ARN of the KMS key used for decrypting slack webhook url | `string` | `""` | no |
+| kms\_key\_arn | ARN of the KMS key used for decrypting teams webhook url | `string` | `""` | no |
 | lambda\_description | The description of the Lambda function | `string` | `null` | no |
-| lambda\_function\_name | The name of the Lambda function to create | `string` | `"notify_slack"` | no |
+| lambda\_function\_name | The name of the Lambda function to create | `string` | `"notify_teams"` | no |
 | lambda\_function\_tags | Additional tags for the Lambda function | `map(string)` | `{}` | no |
 | log\_events | Boolean flag to enabled/disable logging of incoming events | `bool` | `false` | no |
 | reserved\_concurrent\_executions | The amount of reserved concurrent executions for this lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations | `number` | `-1` | no |
-| slack\_channel | The name of the channel in Slack for notifications | `string` | n/a | yes |
-| slack\_emoji | A custom emoji that will appear on Slack messages | `string` | `":aws:"` | no |
-| slack\_username | The username that will appear on Slack messages | `string` | n/a | yes |
-| slack\_webhook\_url | The URL of Slack webhook | `string` | n/a | yes |
+| teams\_webhook\_url | The URL of Microsoft Teams webhook | `string` | n/a | yes |
 | sns\_topic\_kms\_key\_id | ARN of the KMS key used for enabling SSE on the topic | `string` | `""` | no |
 | sns\_topic\_name | The name of the SNS topic to create | `string` | n/a | yes |
 | sns\_topic\_tags | Additional tags for the SNS topic | `map(string)` | `{}` | no |
@@ -117,12 +111,12 @@ To run the tests:
 | lambda\_cloudwatch\_log\_group\_arn | The Amazon Resource Name (ARN) specifying the log group |
 | lambda\_iam\_role\_arn | The ARN of the IAM role used by Lambda function |
 | lambda\_iam\_role\_name | The name of the IAM role used by Lambda function |
-| notify\_slack\_lambda\_function\_arn | The ARN of the Lambda function |
-| notify\_slack\_lambda\_function\_invoke\_arn | The ARN to be used for invoking Lambda function from API Gateway |
-| notify\_slack\_lambda\_function\_last\_modified | The date Lambda function was last modified |
-| notify\_slack\_lambda\_function\_name | The name of the Lambda function |
-| notify\_slack\_lambda\_function\_version | Latest published version of your Lambda function |
-| this\_slack\_topic\_arn | The ARN of the SNS topic from which messages will be sent to Slack |
+| notify\_teams\_lambda\_function\_arn | The ARN of the Lambda function |
+| notify\_teams\_lambda\_function\_invoke\_arn | The ARN to be used for invoking Lambda function from API Gateway |
+| notify\_teams\_lambda\_function\_last\_modified | The date Lambda function was last modified |
+| notify\_teams\_lambda\_function\_name | The name of the Lambda function |
+| notify\_teams\_lambda\_function\_version | Latest published version of your Lambda function |
+| this\_teams\_topic\_arn | The ARN of the SNS topic from which messages will be sent to Teams |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
