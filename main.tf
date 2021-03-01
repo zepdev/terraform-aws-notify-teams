@@ -1,8 +1,5 @@
-data "aws_sns_topic" "this" {
-  count = false == var.create_sns_topic && var.create ? 1 : 0
-
-  name = var.sns_topic_name
-}
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 resource "aws_sns_topic" "this" {
   count = var.create_sns_topic && var.create ? 1 : 0
@@ -15,13 +12,20 @@ resource "aws_sns_topic" "this" {
 }
 
 locals {
-  sns_topic_arn = element(concat(aws_sns_topic.this.*.arn, data.aws_sns_topic.this.*.arn, [""]), 0)
+  sns_topic_arn = element(
+    concat(
+      aws_sns_topic.this.*.arn,
+      ["arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${var.sns_topic_name}"],
+      [""]
+    ),
+    0,
+  )
 
   lambda_policy_document = {
     sid       = "AllowWriteToCloudwatchLogs"
     effect    = "Allow"
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-    resources = [element(concat(aws_cloudwatch_log_group.lambda[*].arn, list("")), 0)]
+    resources = [replace("${element(concat(aws_cloudwatch_log_group.lambda[*].arn, list("")), 0)}:*", ":*:*", ":*")]
   }
 
   lambda_policy_document_kms = {
@@ -62,12 +66,12 @@ resource "aws_sns_topic_subscription" "sns_notify_teams" {
   topic_arn     = local.sns_topic_arn
   protocol      = "lambda"
   endpoint      = module.lambda.this_lambda_function_arn
-  filter_policy = var.subsription_filter_policy
+  filter_policy = var.subscription_filter_policy
 }
 
 module "lambda" {
   source  = "terraform-aws-modules/lambda/aws"
-  version = "1.6.1"
+  version = "1.28.0"
 
   create = var.create
 
@@ -89,7 +93,8 @@ module "lambda" {
     LOG_EVENTS        = var.log_events ? "True" : "False"
   }
 
-  create_role               = true
+  create_role               = var.lambda_role == ""
+  lambda_role               = var.lambda_role
   role_name                 = "${var.iam_role_name_prefix}-${var.lambda_function_name}"
   role_permissions_boundary = var.iam_role_boundary_policy_arn
   role_tags                 = var.iam_role_tags
@@ -101,6 +106,9 @@ module "lambda" {
   attach_policy_json            = true
   policy_json                   = element(concat(data.aws_iam_policy_document.lambda[*].json, [""]), 0)
 
+  use_existing_cloudwatch_log_group = true
+  attach_network_policy             = var.lambda_function_vpc_subnet_ids != null
+
   allowed_triggers = {
     AllowExecutionFromSNS = {
       principal  = "sns.amazonaws.com"
@@ -108,5 +116,13 @@ module "lambda" {
     }
   }
 
+  store_on_s3 = var.lambda_function_store_on_s3
+  s3_bucket   = var.lambda_function_s3_bucket
+
+  vpc_subnet_ids         = var.lambda_function_vpc_subnet_ids
+  vpc_security_group_ids = var.lambda_function_vpc_security_group_ids
+
   tags = merge(var.tags, var.lambda_function_tags)
+
+  depends_on = [aws_cloudwatch_log_group.lambda]
 }
