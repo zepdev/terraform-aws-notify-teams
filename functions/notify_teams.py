@@ -56,7 +56,8 @@ def lambda_handler(event, context):
       "text": data["text"]
     }
 
-    req = Request(HOOK_URL, json.dumps(message).encode('utf-8'))
+    req = Request(url=HOOK_URL, data=json.dumps(message).encode('utf-8'), headers={"Content-Type": "application/json"})
+
     try:
         response = urlopen(req)
         response.read()
@@ -65,4 +66,3 @@ def lambda_handler(event, context):
         logger.error("Request failed: %d %s", e.code, e.reason)
     except URLError as e:
         logger.error("Server connection failed: %s", e.reason)
-
